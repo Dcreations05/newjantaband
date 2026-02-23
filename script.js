@@ -42,8 +42,28 @@ function selectPackage(pkgName) {
     const bookingInput = document.getElementById('booking-package');
     if(bookingInput) {
         bookingInput.value = pkgName;
+        updateAdvanceLimits(); // Update limits when package is selected via buttons
         document.getElementById('booking-section').scrollIntoView({ behavior: 'smooth' });
     }
+}
+
+function updateAdvanceLimits() {
+    const pkg = document.getElementById('booking-package').value;
+    const amountInput = document.getElementById('booking-amount');
+    const label = document.getElementById('advance-amount-label');
+    
+    let min = 1;
+    let max = 5000;
+    
+    if (pkg === 'Premium Package') {
+        min = 10;
+        max = 10000;
+    }
+    
+    amountInput.min = min;
+    amountInput.max = max;
+    amountInput.placeholder = `Enter amount (₹${min} - ₹${max})`;
+    label.textContent = `Advance Amount / अग्रिम राशि (₹${min} - ₹${max})`;
 }
 
 // Share Functionality
@@ -72,14 +92,23 @@ function initiatePayment(e) {
     const mobile = document.getElementById('booking-mobile').value;
     const amount = document.getElementById('booking-amount').value;
     const totalAmount = document.getElementById('booking-total-amount').value;
+    const pkg = document.getElementById('booking-package').value;
     
     if(mobile.length !== 10) {
         alert('Please enter a valid 10-digit mobile number');
         return;
     }
     
-    if(amount < 1 || amount > 5000) {
-        alert('Advance amount must be between ₹1 and ₹5000');
+    let min = 1;
+    let max = 5000;
+    
+    if (pkg === 'Premium Package') {
+        min = 10;
+        max = 10000;
+    }
+    
+    if(amount < min || amount > max) {
+        alert(`Advance amount must be between ₹${min} and ₹${max} for ${pkg || 'selected package'}`);
         return;
     }
 

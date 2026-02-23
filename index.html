@@ -430,8 +430,14 @@
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1.5">Package / पैकेज</label>
                             <div class="relative">
-                                <i data-lucide="package" class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400"></i>
-                                <input type="text" id="booking-package" name="package" class="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all" placeholder="Select a package from above or type here">
+                                <i data-lucide="package" class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none"></i>
+                                <select id="booking-package" name="package" onchange="updateAdvanceLimits()" class="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all appearance-none bg-white">
+                                    <option value="" disabled selected>Select a Package</option>
+                                    <option value="Basic Package">Basic Package</option>
+                                    <option value="Standard Package">Standard Package</option>
+                                    <option value="Premium Package">Premium Package</option>
+                                </select>
+                                <i data-lucide="chevron-down" class="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none"></i>
                             </div>
                         </div>
 
@@ -444,10 +450,10 @@
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1.5">Advance Amount / अग्रिम राशि (₹1 - ₹5000)</label>
+                            <label id="advance-amount-label" class="block text-sm font-medium text-slate-700 mb-1.5">Advance Amount / अग्रिम राशि</label>
                             <div class="relative">
                                 <i data-lucide="indian-rupee" class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400"></i>
-                                <input type="number" id="booking-amount" name="amount" required min="1" max="5000" class="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all" placeholder="Enter advance amount">
+                                <input type="number" id="booking-amount" name="amount" required min="1" max="5000" class="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all" placeholder="Select a package first">
                             </div>
                         </div>
 
