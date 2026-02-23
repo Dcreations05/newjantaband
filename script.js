@@ -64,4 +64,131 @@ function shareLink() {
 // Form submission is now handled by Formspree via HTML action attribute
 
 // Booking Form Handler
-// Form submission is now handled by Formspree via HTML action attribute
+// Intercepts form submission to show payment modal first
+function initiatePayment(e) {
+    e.preventDefault();
+    
+    // Basic Validation
+    const mobile = document.getElementById('booking-mobile').value;
+    const amount = document.getElementById('booking-amount').value;
+    
+    if(mobile.length !== 10) {
+        alert('Please enter a valid 10-digit mobile number');
+        return;
+    }
+    
+    if(amount < 500 || amount > 5000) {
+        alert('Advance amount must be between ₹500 and ₹5000');
+        return;
+    }
+
+    // Show Payment Modal
+    const modal = document.getElementById('payment-modal');
+    const modalContent = document.getElementById('payment-modal-content');
+    
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        modalContent.classList.remove('scale-95', 'opacity-0');
+        modalContent.classList.add('scale-100', 'opacity-100');
+        lucide.createIcons();
+    }, 10);
+}
+
+function closePaymentModal() {
+    const modal = document.getElementById('payment-modal');
+    const modalContent = document.getElementById('payment-modal-content');
+    
+    modalContent.classList.remove('scale-100', 'opacity-100');
+    modalContent.classList.add('scale-95', 'opacity-0');
+    
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 300);
+}
+
+async function confirmPayment() {
+    // 1. Generate Reference Number
+    const timestamp = Date.now().toString().slice(-6);
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    const refNumber = `REF-${timestamp}${random}`;
+    
+    // 2. Set Reference Number in Form
+    document.getElementById('booking-reference').value = refNumber;
+    document.getElementById('success-ref-number').textContent = refNumber;
+    
+    // 3. Submit Form to Formspree via AJAX
+    const form = document.getElementById('booking-form');
+    const formData = new FormData(form);
+    
+    try {
+        const response = await fetch(form.action, {
+            method: form.method,
+            body: formData,
+            headers: {
+                'Accept': 'application/json'
+            }
+        });
+        
+        if (response.ok) {
+            // 4. Hide Payment Modal & Show Success Modal
+            closePaymentModal();
+            setTimeout(() => {
+                showSuccessModal();
+                
+                // 5. Send WhatsApp Message to Owner
+                const name = document.getElementById('booking-name').value;
+                const mobile = document.getElementById('booking-mobile').value;
+                const date = document.getElementById('booking-date').value;
+                const location = document.getElementById('booking-location').value;
+                const pkg = document.getElementById('booking-package').value;
+                const amount = document.getElementById('booking-amount').value;
+
+                const message = encodeURIComponent(
+                    `*New Booking Confirmed*\n\n` +
+                    `Ref No: ${refNumber}\n` +
+                    `Name: ${name}\n` +
+                    `Mobile: ${mobile}\n` +
+                    `Date: ${date}\n` +
+                    `Location: ${location}\n` +
+                    `Package: ${pkg || 'Not selected'}\n` +
+                    `Advance Paid: ₹${amount}\n` +
+                    `Payment Status: User marked as Paid`
+                );
+                
+                // Using the number from UPI ID or primary contact
+                const ownerPhone = "918982069314"; 
+                window.open(`https://wa.me/${ownerPhone}?text=${message}`, '_blank');
+
+                form.reset();
+            }, 300);
+        } else {
+            alert("Oops! There was a problem submitting your form");
+        }
+    } catch (error) {
+        alert("Oops! There was a problem submitting your form");
+    }
+}
+
+function showSuccessModal() {
+    const modal = document.getElementById('success-modal');
+    const modalContent = document.getElementById('success-modal-content');
+    
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        modalContent.classList.remove('scale-95', 'opacity-0');
+        modalContent.classList.add('scale-100', 'opacity-100');
+        lucide.createIcons();
+    }, 10);
+}
+
+function closeSuccessModal() {
+    const modal = document.getElementById('success-modal');
+    const modalContent = document.getElementById('success-modal-content');
+    
+    modalContent.classList.remove('scale-100', 'opacity-100');
+    modalContent.classList.add('scale-95', 'opacity-0');
+    
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 300);
+}

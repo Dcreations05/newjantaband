@@ -346,6 +346,7 @@
                 </div>
                 
                 <form action="https://formspree.io/f/mykdbnve" method="POST" class="space-y-5">
+                    <input type="hidden" name="_subject" value="New Inquiry from Website">
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1.5">Name / नाम</label>
                         <div class="relative">
@@ -391,7 +392,9 @@
                         Send Booking Request / बुकिंग भेजें
                     </h3>
                     
-                    <form action="https://formspree.io/f/mykdbnve" method="POST" class="space-y-5">
+                    <form id="booking-form" onsubmit="initiatePayment(event)" class="space-y-5">
+                        <input type="hidden" name="_subject" value="New Booking Request from Website">
+                        <input type="hidden" id="booking-reference" name="reference_number">
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1.5">Name / नाम</label>
                             <div class="relative">
@@ -441,8 +444,8 @@
                         </div>
 
                         <button type="submit" class="w-full bg-amber-500 text-slate-900 py-4 rounded-lg font-bold hover:bg-amber-400 transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 mt-4">
-                            <i data-lucide="send" class="w-5 h-5"></i>
-                            Send Booking Request / बुकिंग भेजें
+                            <i data-lucide="credit-card" class="w-5 h-5"></i>
+                            Proceed to Payment / भुगतान करें
                         </button>
                     </form>
                 </div>
@@ -615,6 +618,61 @@
             </p>
         </div>
     </footer>
+
+    <!-- Payment Modal -->
+    <div id="payment-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/80 backdrop-blur-sm transition-opacity duration-300 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 max-w-sm sm:max-w-md w-full transform transition-all scale-95 opacity-0 relative overflow-y-auto max-h-[90vh]" id="payment-modal-content">
+            <button onclick="closePaymentModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-2 rounded-full hover:bg-slate-100 transition-colors">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+            <div class="text-center">
+                <h3 class="text-xl sm:text-2xl font-bold text-slate-900 mb-2">Complete Payment</h3>
+                <p class="text-sm sm:text-base text-slate-500 mb-6">Scan QR code or use UPI apps to pay</p>
+                
+                <div class="bg-slate-50 p-4 sm:p-6 rounded-xl border border-slate-200 mb-6 inline-block w-full max-w-[280px]">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=upi://pay?pa=9522552066-4@ybl&pn=NewJantaBand&am=0&cu=INR" alt="Payment QR Code" class="w-full h-auto aspect-square mx-auto mb-4 rounded-lg shadow-sm">
+                    <p class="font-mono text-xs sm:text-sm bg-white border border-slate-200 py-2 px-3 rounded text-slate-600 select-all break-all">9522552066-4@ybl</p>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+                    <a href="upi://pay?pa=9522552066-4@ybl&pn=NewJantaBand&cu=INR" class="flex items-center justify-center gap-2 bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition-colors shadow-md shadow-indigo-500/20 active:scale-95 transform duration-100">
+                        <span class="font-bold text-sm">PhonePe / GPay</span>
+                    </a>
+                    <a href="upi://pay?pa=9522552066-4@ybl&pn=NewJantaBand&cu=INR" class="flex items-center justify-center gap-2 bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 transition-colors shadow-md shadow-blue-500/20 active:scale-95 transform duration-100">
+                        <span class="font-bold text-sm">Paytm / Others</span>
+                    </a>
+                </div>
+
+                <div class="border-t border-slate-100 pt-6">
+                    <p class="text-xs text-slate-400 mb-4">After payment, click the button below to complete booking.</p>
+                    <button onclick="confirmPayment()" class="w-full bg-green-600 text-white py-3.5 rounded-xl font-bold hover:bg-green-700 transition-all shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 active:scale-95 transform duration-100">
+                        <i data-lucide="check-circle" class="w-5 h-5"></i>
+                        I Have Paid / भुगतान हो गया
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="success-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/50 backdrop-blur-sm transition-opacity duration-300">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 transform transition-all scale-95 opacity-0" id="success-modal-content">
+            <div class="text-center">
+                <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i data-lucide="check" class="w-8 h-8 text-green-600"></i>
+                </div>
+                <h3 class="text-2xl font-bold text-slate-900 mb-2">Booking Successful!</h3>
+                <p class="text-slate-600 mb-2">Thank you! We have received your request.</p>
+                <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 mb-6">
+                    <p class="text-xs text-slate-500 uppercase tracking-wider mb-1">Reference Number</p>
+                    <p class="font-mono text-lg font-bold text-slate-800" id="success-ref-number">REF-123456</p>
+                </div>
+                <button onclick="closeSuccessModal()" class="w-full bg-slate-900 text-white py-3 rounded-xl font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20">
+                    Close / बंद करें
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- Custom Script -->
     <script src="script.js"></script>
