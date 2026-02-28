@@ -187,92 +187,6 @@ function startPaymentTimer() {
     paymentTimerInterval = setInterval(updateTimer, 1000);
 }
 
-async function payWithRazorpay() {
-    if (typeof Razorpay === 'undefined') {
-        alert('Payment gateway is not loaded. Please check your internet connection.');
-        return;
-    }
-
-    const mobile = document.getElementById('booking-mobile').value;
-    const amount = document.getElementById('booking-amount').value;
-
-    // Call Backend to Create Order
-    try {
-        const response = await fetch('/api/create-order', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ amount, currency: 'INR' })
-        });
-        
-        const order = await response.json();
-        
-        if (order.id) {
-            // Open Razorpay Checkout
-            const options = {
-                "key": "rzp_test_YourKeyHere", // Enter the Key ID generated from the Dashboard
-                "amount": order.amount, // Amount is in currency subunits. Default currency is INR.
-                "currency": order.currency,
-                "name": "New Janta Band",
-                "description": "Booking Advance Payment",
-                "image": "https://example.com/your_logo",
-                "order_id": order.id, // This is a sample Order ID. Pass the `id` obtained in the response of Step 1
-                "handler": function (response){
-                    // Verify Payment
-                    verifyPayment(response);
-                },
-                "prefill": {
-                    "name": document.getElementById('booking-name').value,
-                    "email": "customer@example.com",
-                    "contact": mobile
-                },
-                "notes": {
-                    "address": document.getElementById('booking-location').value
-                },
-                "theme": {
-                    "color": "#F59E0B"
-                },
-                "modal": {
-                    "ondismiss": function(){
-                        console.log('Checkout form closed');
-                    }
-                }
-            };
-            const rzp1 = new Razorpay(options);
-            rzp1.open();
-        } else {
-            alert('Failed to initiate payment. Please try again.');
-        }
-    } catch (error) {
-        console.error('Error initiating payment:', error);
-        alert('Failed to initiate payment. Please try again.');
-    }
-}
-
-async function verifyPayment(response) {
-    try {
-        const verifyResponse = await fetch('/api/verify-payment', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature
-            })
-        });
-        
-        const result = await verifyResponse.json();
-        
-        if (result.status === 'success') {
-            confirmPayment(response.razorpay_payment_id);
-        } else {
-            alert('Payment verification failed.');
-        }
-    } catch (error) {
-        console.error('Error verifying payment:', error);
-        alert('Payment verification failed.');
-    }
-}
-
 function closePaymentModal() {
     const modal = document.getElementById('payment-modal');
     const modalContent = document.getElementById('payment-modal-content');
@@ -300,6 +214,7 @@ async function confirmPayment(txnId) {
     // Get Form Values
     const name = document.getElementById('booking-name').value;
     const mobile = document.getElementById('booking-mobile').value;
+    const email = document.getElementById('booking-email').value;
     const eventDate = document.getElementById('booking-date').value;
     const location = document.getElementById('booking-location').value;
     const pkg = document.getElementById('booking-package').value;
@@ -339,11 +254,30 @@ async function confirmPayment(txnId) {
         
         if (response.ok) {
             // 5. Hide Payment Modal & Show Success Modal (Invoice)
-            // Note: With Razorpay, the modal closes automatically on success, so we just show the success modal
             closePaymentModal(); // Just in case
             setTimeout(() => {
                 showSuccessModal();
                 
+                // Send Confirmation Email
+                fetch('/api/send-confirmation', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email,
+                        name,
+                        bookingDetails: {
+                            referenceNumber: refNumber,
+                            transactionId: finalTxnId,
+                            eventDate,
+                            location,
+                            package: pkg || 'Custom Package',
+                            totalAmount,
+                            advanceAmount,
+                            remainingAmount
+                        }
+                    })
+                }).catch(err => console.error('Failed to send confirmation email', err));
+
                 // 6. Send WhatsApp Message to Owner
                 const message = encodeURIComponent(
                     `*New Booking Confirmed*\n\n` +
@@ -357,7 +291,7 @@ async function confirmPayment(txnId) {
                     `Total Amount: ₹${totalAmount}\n` +
                     `Advance Paid: ₹${advanceAmount}\n` +
                     `Remaining: ₹${remainingAmount}\n` +
-                    `Payment Status: Paid via Razorpay`
+                    `Payment Status: Paid via UPI`
                 );
                 
                 const ownerPhone = "918982069314"; 

@@ -1,10 +1,9 @@
 import express from 'express';
-import Razorpay from 'razorpay';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import crypto from 'crypto';
+import nodemailer from 'nodemailer';
 
 dotenv.config();
 
@@ -18,58 +17,96 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
 
-// Initialize Razorpay
-let razorpay;
-try {
-    razorpay = new Razorpay({
-        key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_YourKeyHere',
-        key_secret: process.env.RAZORPAY_KEY_SECRET || 'YourSecretHere'
-    });
-} catch (error) {
-    console.error('Failed to initialize Razorpay:', error);
-}
+// Email Confirmation Endpoint
+app.post('/api/send-confirmation', async (req, res) => {
+    const { email, name, bookingDetails } = req.body;
 
-// Create Order Endpoint
-app.post('/api/create-order', async (req, res) => {
-    if (!razorpay) {
-        return res.status(500).json({ error: 'Payment gateway not initialized' });
+    if (!email) {
+        return res.status(400).json({ error: 'Email is required' });
     }
+
     try {
-        const { amount, currency = 'INR' } = req.body;
-        
-        const options = {
-            amount: amount * 100, // Amount in paise
-            currency,
-            receipt: `receipt_${Date.now()}`,
-            payment_capture: 1 // Auto capture
-        };
+        // Check if SMTP credentials are provided
+        if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
+             console.log('Mocking email send (missing SMTP credentials):', { email, name, bookingDetails });
+             return res.json({ success: true, message: 'Email logged (no SMTP config)' });
+        }
 
-        const order = await razorpay.orders.create(options);
-        res.json(order);
+        const transporter = nodemailer.createTransport({
+            host: process.env.SMTP_HOST,
+            port: parseInt(process.env.SMTP_PORT || '587'),
+            secure: process.env.SMTP_SECURE === 'true', 
+            auth: {
+                user: process.env.SMTP_USER,
+                pass: process.env.SMTP_PASS,
+            },
+        });
+
+        const info = await transporter.sendMail({
+            from: process.env.SMTP_FROM || '"New Janta Band" <noreply@newjantaband.com>',
+            to: email,
+            subject: `Booking Confirmation - ${bookingDetails.referenceNumber}`,
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <h2 style="color: #d97706;">Booking Confirmation</h2>
+                    <p>Dear <strong>${name}</strong>,</p>
+                    <p>Thank you for choosing New Janta Band! Your booking has been confirmed.</p>
+                    
+                    <div style="background-color: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; margin: 20px 0;">
+                        <h3 style="margin-top: 0; color: #1e293b;">Booking Details</h3>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr>
+                                <td style="padding: 8px 0; color: #64748b;">Reference No:</td>
+                                <td style="padding: 8px 0; font-weight: bold; color: #0f172a;">${bookingDetails.referenceNumber}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; color: #64748b;">Transaction ID:</td>
+                                <td style="padding: 8px 0; font-weight: bold; color: #0f172a;">${bookingDetails.transactionId}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; color: #64748b;">Event Date:</td>
+                                <td style="padding: 8px 0; font-weight: bold; color: #0f172a;">${bookingDetails.eventDate}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; color: #64748b;">Location:</td>
+                                <td style="padding: 8px 0; font-weight: bold; color: #0f172a;">${bookingDetails.location}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; color: #64748b;">Package:</td>
+                                <td style="padding: 8px 0; font-weight: bold; color: #0f172a;">${bookingDetails.package}</td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <div style="background-color: #f0fdf4; padding: 20px; border-radius: 8px; border: 1px solid #bbf7d0; margin: 20px 0;">
+                        <h3 style="margin-top: 0; color: #166534;">Payment Summary</h3>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr>
+                                <td style="padding: 8px 0; color: #166534;">Total Amount:</td>
+                                <td style="padding: 8px 0; font-weight: bold; color: #166534;">₹${bookingDetails.totalAmount}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0; color: #166534;">Advance Paid:</td>
+                                <td style="padding: 8px 0; font-weight: bold; color: #166534;">₹${bookingDetails.advanceAmount}</td>
+                            </tr>
+                            <tr style="border-top: 1px solid #bbf7d0;">
+                                <td style="padding: 8px 0; color: #dc2626; font-weight: bold;">Remaining Amount:</td>
+                                <td style="padding: 8px 0; font-weight: bold; color: #dc2626;">₹${bookingDetails.remainingAmount}</td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <p>If you have any questions, please contact us at +91 89820 69314.</p>
+                    <p>Regards,<br><strong>New Janta Band Team</strong></p>
+                </div>
+            `,
+        });
+
+        console.log("Message sent: %s", info.messageId);
+        res.json({ success: true, messageId: info.messageId });
     } catch (error) {
-        console.error('Error creating order:', error);
-        res.status(500).json({ error: 'Failed to create order' });
-    }
-});
-
-// Verify Payment Endpoint
-app.post('/api/verify-payment', (req, res) => {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
-    
-    if (!process.env.RAZORPAY_KEY_SECRET && !razorpay) {
-         return res.status(500).json({ error: 'Payment gateway not initialized' });
-    }
-
-    const secret = process.env.RAZORPAY_KEY_SECRET || 'YourSecretHere';
-
-    const hmac = crypto.createHmac('sha256', secret);
-    hmac.update(razorpay_order_id + "|" + razorpay_payment_id);
-    const generated_signature = hmac.digest('hex');
-    
-    if (generated_signature === razorpay_signature) {
-        res.json({ status: 'success' });
-    } else {
-        res.status(400).json({ status: 'failure' });
+        console.error("Error sending email:", error);
+        res.status(500).json({ error: 'Failed to send email' });
     }
 });
 
